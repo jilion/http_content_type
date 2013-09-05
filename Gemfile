@@ -10,6 +10,8 @@ gem 'rake'
 group :development do
   gem 'guard-rspec'
 
+  gem 'yard'
+  gem 'redcarpet'
   gem 'pimpmychangelog'
 
   require 'rbconfig'

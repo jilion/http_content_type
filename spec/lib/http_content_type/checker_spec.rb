@@ -75,6 +75,11 @@ describe HttpContentType::Checker do
       its(:expected_content_type) { eq 'video/mp4' }
     end
 
+    context 'given a hardcoded content-type' do
+      subject { described_class.new('http://foo.com/dynamic_asset.php', expected_content_type: 'video/mp4') }
+      its(:expected_content_type) { eq 'video/mp4' }
+    end
+
     context '.m4v video' do
       subject { described_class.new('http://foo.com/bar.m4v') }
       its(:expected_content_type) { eq 'video/mp4' }
@@ -120,20 +125,24 @@ describe HttpContentType::Checker do
   end
 
   describe '#valid_content_type?' do
-    context 'asset has valid content type' do
-      before { checker.stub(:_head).and_return({ location: URI('http://foo.com/bar.mp4'), found: true, content_type: 'video/mp4' }) }
-
-      it 'returns true' do
-        checker.should be_valid_content_type
-      end
+    context 'asset cannot be found and returns an error' do
+      before { checker.stub(:_head).and_return({ uri: URI('http://foo.com/bar.mp4'), found: false, error: true }) }
+      it { be_valid_content_type }
     end
 
-    context 'asset has invalid content type' do
-      before { checker.stub(:_head).and_return({ location: URI('http://foo.com/bar.mp4'), found: true, content_type: 'video/mov' }) }
+    context 'asset cannot be found and do not return an error', :focus do
+      before { checker.stub(:_head).and_return({ uri: URI('http://foo.com/bar.mp4'), found: false, error: nil }) }
+      it { be_valid_content_type }
+    end
 
-      it 'returns false' do
-        checker.should_not be_valid_content_type
-      end
+    context 'asset is found without an error with valid content type', :focus do
+      before { checker.stub(:_head).and_return({ uri: URI('http://foo.com/bar.mp4'), found: true, error: nil, content_type: 'video/mp4'  }) }
+      it { be_valid_content_type }
+    end
+
+    context 'asset is found without an error with invalid content type', :focus do
+      before { checker.stub(:_head).and_return({ uri: URI('http://foo.com/bar.mov'), found: true, error: nil, content_type: 'video/mov'  }) }
+      it { be_valid_content_type }
     end
   end
 
