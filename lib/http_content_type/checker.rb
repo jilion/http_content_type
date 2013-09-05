@@ -3,32 +3,36 @@ require 'net/http'
 module HttpContentType
 
   class Checker
-    UNKNOWN_CONTENT_TYPE_RESPONSE = { 'found' => true, 'content-type' => 'unknown' }
-    FILE_NOT_FOUND_RESPONSE = { 'found' => false, 'content-type' => 'unknown' }
+    UNKNOWN_CONTENT_TYPE_RESPONSE = { content_type: 'unknown' }
+    FILE_NOT_FOUND_RESPONSE = { found: false, content_type: 'unknown' }
+
+    attr_accessor :last_response
 
     def initialize(asset_url)
       @asset_url = asset_url
     end
 
     def found?
-      _head['found']
+      _head[:found]
     end
 
     def expected_content_type
-      @expected_content_type ||= case File.extname(@asset_url).sub(/^\./, '')
-                                 when 'mp4', 'm4v', 'mov'
-                                   'video/mp4'
-                                 when 'webm'
-                                   'video/webm'
-                                 when 'ogv', 'ogg'
-                                   'video/ogg'
-                                 else
-                                   'unknown'
-                                 end
+      @expected_content_type ||= begin
+        case File.extname(_head[:location].path).sub(/^\./, '')
+        when 'mp4', 'm4v', 'mov'
+          'video/mp4'
+        when 'webm'
+          'video/webm'
+        when 'ogv', 'ogg'
+          'video/ogg'
+        else
+          'unknown'
+        end
+      end
     end
 
     def content_type
-      _head['content-type']
+      _head[:content_type]
     end
 
     def valid_content_type?
@@ -37,32 +41,42 @@ module HttpContentType
 
     private
 
-    def _clean_uri
-      @_clean_uri ||= URI.parse(URI.escape(@asset_url))
-    end
-
-    def _head_options
-      @_head_options ||= { use_ssl: _clean_uri.scheme == 'https', read_timeout: 3 }
-    end
-
     def _head
-      @response ||= begin
-        response = Net::HTTP.start(_clean_uri.host, _clean_uri.port, _head_options) do |http|
-          http.head(_clean_uri.path)
-        end
+      @head ||= _fetch(@asset_url)
+    end
 
-        case response
-        when Net::HTTPSuccess, Net::HTTPRedirection
-          { 'found' => true, 'content-type' => response['content-type'] }
-        when Net::HTTPClientError
-          FILE_NOT_FOUND_RESPONSE
-        else
-          UNKNOWN_CONTENT_TYPE_RESPONSE
-        end
+    def _connection_options(uri)
+      @_connection_options ||= { use_ssl: uri.scheme == 'https', read_timeout: 3 }
+    end
 
-      rescue
-        UNKNOWN_CONTENT_TYPE_RESPONSE
+    def _fetch(url, limit = 10)
+      raise TooManyRedirections if limit == 0
+
+      uri ||= URI.parse(URI.escape(url))
+      @last_response = Net::HTTP.start(uri.hostname, uri.port, _connection_options(uri)) do |http|
+        req = Net::HTTP::Head.new(uri.request_uri)
+        http.request(req)
       end
+
+      simplified_response = { location: uri, found: true, content_type: @last_response['content-type'] }
+
+
+      case @last_response
+      when Net::HTTPSuccess
+        simplified_response
+      when Net::HTTPRedirection
+        _fetch(@last_response['location'], limit - 1)
+      when Net::HTTPClientError
+        simplified_response.merge(FILE_NOT_FOUND_RESPONSE)
+      else
+        simplified_response.merge(UNKNOWN_CONTENT_TYPE_RESPONSE)
+      end
+
+    rescue => ex
+      puts "Exception from HttpContentType::Checker#_fetch('#{uri}', #{limit}):"
+      puts ex
+      # puts ex.backtrace
+      UNKNOWN_CONTENT_TYPE_RESPONSE
     end
 
   end

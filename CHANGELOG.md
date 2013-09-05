@@ -1,5 +1,11 @@
 ## Master
 
+No changes.
+
+### 0.0.2 - 5 September, 2013
+
+- Handle redirections & url with query params. ([@rymai][])
+
 ### 0.0.1 - 4 September, 2013
 
 - Initial release. ([@rymai][])
