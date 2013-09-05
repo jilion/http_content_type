@@ -52,7 +52,7 @@ module HttpContentType
     end
 
     def _connection_options(uri)
-      @_connection_options ||= { use_ssl: uri.scheme == 'https', read_timeout: 3 }
+      @_connection_options ||= { use_ssl: uri.scheme == 'https', read_timeout: options[:timeout] }
     end
 
     def _fetch(url, limit = 10)
