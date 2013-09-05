@@ -3,6 +3,8 @@
 
 This gem allows you to check the Content-Type of any asset accessible via HTTP.
 
+Compatible with Ruby >= 1.9, JRuby (1.9 mode) or Rubinius (1.9 mode).
+
 ## Installation
 
 Add this line to your application's Gemfile:
@@ -27,8 +29,30 @@ $ gem install http_content_type
 ```ruby
 checker = HttpContentType::Checker.new('http://domain.com/video.mp4')
 
-checker.found?                # => true (asset doesn't return a 404)
-checker.expected_content_type # => 'video/mp4' (the expected content type is based on file extension)
+checker.error?                # => false (true if there was an error requesting
+                              #    the asset)
+checker.found?                # => true (the asset was found, i.e. request
+                              #    returned an `Net::HTTPSuccess` response)
+checker.expected_content_type # => 'video/mp4' (the expected content type is
+                              #    based on file extension but can also be
+                              #    hardcoded with the :expected_content_type option)
+checker.content_type          # => 'video/mp4'
+checker.valid_content_type?   # => true
+```
+
+### Options
+
+#### `:timeout`
+
+```ruby
+checker = HttpContentType::Checker.new('http://domain.com/video.mp4', timeout: 10) # in seconds
+```
+
+#### `:expected_content_type`
+
+```ruby
+checker = HttpContentType::Checker.new('http://domain.com/dynamic_asset.php', expected_content_type: 'video/mp4')
+checker.expected_content_type # => 'video/mp4'
 checker.content_type          # => 'video/mp4'
 checker.valid_content_type?   # => true
 ```
