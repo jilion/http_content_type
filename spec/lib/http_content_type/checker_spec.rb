@@ -4,6 +4,30 @@ require 'http_content_type/checker'
 
 describe HttpContentType::Checker do
   let(:checker) { described_class.new('http://foo.com/bar.mp4') }
+  subject { checker }
+
+  describe '#initialize' do
+    it 'has default options' do
+      expect(checker.options[:timeout]).to eq 5
+    end
+
+    describe ':timeout options' do
+      it 'is customizable' do
+        checker = described_class.new('http://foo.com/bar.mp4', timeout: 10)
+
+        expect(checker.options[:timeout]).to eq 10
+      end
+    end
+
+    describe ':expected_content_type options' do
+      it 'is customizable' do
+        checker = described_class.new('http://foo.com/dynamic_asset.php', expected_content_type: 'video/mp4')
+
+        expect(checker.expected_content_type).to eq 'video/mp4'
+      end
+    end
+  end
+
 
   describe '#found?' do
     context 'asset is not found' do

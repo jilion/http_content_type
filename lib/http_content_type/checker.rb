@@ -8,8 +8,10 @@ module HttpContentType
 
     attr_accessor :last_response
 
-    def initialize(asset_url)
+    def initialize(asset_url, opts = {})
       @asset_url = asset_url
+      @expected_content_type = opts.delete(:expected_content_type)
+      @options = DEFAULT_OPTIONS.merge(opts)
     end
 
     def found?
