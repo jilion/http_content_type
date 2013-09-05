@@ -53,7 +53,7 @@ module HttpContentType
       raise TooManyRedirections if limit == 0
 
       uri ||= URI.parse(URI.escape(url))
-      @last_response = Net::HTTP.start(uri.hostname, uri.port, _connection_options(uri)) do |http|
+      @last_response = Net::HTTP.start(uri.host, uri.port, _connection_options(uri)) do |http|
         req = Net::HTTP::Head.new(uri.request_uri)
         http.request(req)
       end
