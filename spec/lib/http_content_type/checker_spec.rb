@@ -28,6 +28,23 @@ describe HttpContentType::Checker do
     end
   end
 
+  describe '#error?' do
+    context 'asset do not return an error' do
+      before { checker.stub(:_head).and_return({ found: false, error: nil }) }
+
+      it 'return false' do
+        checker.should_not be_error
+      end
+    end
+
+    context 'asset returns an error' do
+      before { checker.stub(:_head).and_return({ found: false, error: true }) }
+
+      it 'return true' do
+        checker.should be_error
+      end
+    end
+  end
 
   describe '#found?' do
     context 'asset is not found' do

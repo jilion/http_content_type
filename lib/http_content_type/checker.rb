@@ -14,6 +14,10 @@ module HttpContentType
       @options = DEFAULT_OPTIONS.merge(opts)
     end
 
+    def error?
+      !_head[:error].nil?
+    end
+
     def found?
       _head[:found]
     end
