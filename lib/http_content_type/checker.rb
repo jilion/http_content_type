@@ -3,7 +3,6 @@ require 'net/http'
 module HttpContentType
 
   class Checker
-    class TooManyRedirections < Exception; end
 
     DEFAULT_OPTIONS = {
       timeout: 5
@@ -27,9 +26,8 @@ module HttpContentType
     end
 
     # Returns true if there was an error requesting the asset. Most common
-    # errors are `HTTPClientError`, `HTTPServerError`, `HTTPUnknownResponse`,
-    # `HttpContentType::TooManyRedirections`. Note that any other (less common)
-    # exceptions are catched as well.
+    # errors are `HTTPClientError`, `HTTPServerError`, `HTTPUnknownResponse`.
+    # Note that any other (less common) exceptions are catched as well.
     #
     # @return [Boolean] whether or not there was an error while requesting the
     #   asset.
@@ -105,9 +103,10 @@ module HttpContentType
     end
 
     def _fetch(url, limit = 10)
-      raise TooManyRedirections if limit == 0
-
       uri ||= URI.parse(URI.escape(url))
+
+      return _other_error_response(uri, nil, error: 'Too many redirections') if limit == 0
+
       @last_response = Net::HTTP.start(uri.host, uri.port, _connection_options(uri)) do |http|
         req = Net::HTTP::Head.new(uri.request_uri)
         http.request(req)
@@ -115,30 +114,30 @@ module HttpContentType
 
       case @last_response
       when Net::HTTPSuccess
-        _found_response(uri, @last_response)
+        _success_response(uri, @last_response)
       when Net::HTTPRedirection
         _fetch(@last_response['location'], limit - 1)
-      when HTTPClientError
-        _not_found_response(uri, @last_response)
+      when Net::HTTPClientError
+        _client_error_response(uri, @last_response)
       else
-        _errored_response(uri, @last_response)
+        _other_error_response(uri, @last_response)
       end
 
     rescue => ex
       puts "Exception from HttpContentType::Checker#_fetch('#{uri}', #{limit}):"
       puts ex
-      _errored_response(@last_response, error: ex)
+      _other_error_response(uri, @last_response, error: ex)
     end
 
-    def _found_response(uri, http_response)
+    def _success_response(uri, http_response)
       _base_response(uri).merge(found: true, error: nil, content_type: http_response['content-type'])
     end
 
-    def _not_found_response(uri, http_response)
+    def _client_error_response(uri, http_response)
       _base_response(uri).merge(found: false, error: nil, content_type: 'unknown')
     end
 
-    def _errored_response(uri, http_response, opts = {})
+    def _other_error_response(uri, http_response, opts = {})
       error = opts[:error] || "#{http_response.code}: #{http_response.message}"
 
       _base_response(uri).merge(found: false, error: error, content_type: 'unknown')

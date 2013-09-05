@@ -130,24 +130,60 @@ describe HttpContentType::Checker do
       it { be_valid_content_type }
     end
 
-    context 'asset cannot be found and do not return an error', :focus do
+    context 'asset cannot be found and do not return an error' do
       before { checker.stub(:_head).and_return({ uri: URI('http://foo.com/bar.mp4'), found: false, error: nil }) }
       it { be_valid_content_type }
     end
 
-    context 'asset is found without an error with valid content type', :focus do
+    context 'asset is found without an error with valid content type' do
       before { checker.stub(:_head).and_return({ uri: URI('http://foo.com/bar.mp4'), found: true, error: nil, content_type: 'video/mp4'  }) }
       it { be_valid_content_type }
     end
 
-    context 'asset is found without an error with invalid content type', :focus do
+    context 'asset is found without an error with invalid content type' do
       before { checker.stub(:_head).and_return({ uri: URI('http://foo.com/bar.mov'), found: true, error: nil, content_type: 'video/mov'  }) }
       it { be_valid_content_type }
     end
   end
 
   describe '#_fetch' do
-    context 'too many redirections' do
+    describe 'unexpected exception' do
+      before { Net::HTTP.should_receive(:start) { raise 'Unexpected error!' } }
+
+      it 'returns the right response' do
+        res = checker.send(:_fetch, 'http://domain.com/video.mp4')
+
+        expect(res).to include({ found: false, content_type: 'unknown' })
+      end
+    end
+
+    describe 'HTTP client error' do
+      let(:response) do
+        Net::HTTPNotFound.new('1.1', '404', 'Not found')
+      end
+      before { Net::HTTP.any_instance.stub(:request).and_return(response) }
+
+      it 'returns the right response' do
+        res = checker.send(:_fetch, 'http://domain.com/video.mp4')
+
+        expect(res).to include({ found: false, error: nil, content_type: 'unknown' })
+      end
+    end
+
+    describe 'other HTTP errors' do
+      let(:response) do
+        Net::HTTPServiceUnavailable.new('1.1', '503', 'The service is unavailable')
+      end
+      before { Net::HTTP.any_instance.stub(:request).and_return(response) }
+
+      it 'returns the right response' do
+        res = checker.send(:_fetch, 'http://domain.com/video.mp4')
+
+        expect(res).to include({ found: false, error: '503: The service is unavailable', content_type: 'unknown' })
+      end
+    end
+
+    describe 'too many redirections' do
       let(:response) do
         Net::HTTPRedirection.new('1.1', 302, '').tap do |res|
           res['content-type'] = 'foo/bar'
@@ -156,8 +192,10 @@ describe HttpContentType::Checker do
       end
       before { Net::HTTP.any_instance.stub(:request).and_return(response) }
 
-      it 'raise a TooManyRedirections exception' do
-        expect { checker.send(:_fetch, 'http://domain.com/video.mp4') }.to raise_error(HttpContentType::TooManyRedirections)
+      it 'returns the right response' do
+        res = checker.send(:_fetch, 'http://domain.com/video.mp4')
+
+        expect(res).to include({ found: false, error: 'Too many redirections', content_type: 'unknown' })
       end
     end
   end

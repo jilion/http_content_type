@@ -2,6 +2,11 @@
 
 No changes.
 
+### 0.0.3 - 5 September, 2013 - ([@rymai][])
+
+- Fix issues due to specs focused in the CI!
+- Removed the `TooManyRedirections` exception.
+
 ### 0.0.2 - 5 September, 2013 - ([@rymai][])
 
 - Handle redirections & url with query params.
